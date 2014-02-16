@@ -4,8 +4,8 @@
 <script src="http://d3js.org/d3.v3.min.js"></script>
   <style type="text/css">
     rect {
-        fill: teal;
-        fill-opacity: .8;
+        /*fill: teal;
+        fill-opacity: .8;*/
     }
     text {
         font: 10px sans-serif;
@@ -13,6 +13,8 @@
   </style>
 </head>
 <body>
+  <label><input type="radio" name="order" value="state"> State</label>
+  <label><input type="radio" name="order" value="rate" checked> Rate</label>
   <script type="text/javascript">
 
     var margin = {top: 50, bottom: 10, left:300, right: 40};
@@ -24,6 +26,8 @@
 
     var bar_height = 15;
 
+    
+
     var state = function(d) { return d.State; };
 
     var svg = d3.select("body").append("svg")
@@ -33,7 +37,14 @@
     var g = svg.append("g")
       .attr("transform", "translate("+margin.left+","+margin.top+")");
 
+    var title= g.append("text").html("Unemployment Rates for States").style("font-size", "30px")
+
     d3.tsv("unemp_states_us_nov_2013.tsv", function(data) {
+
+      var color = d3.scale.linear()
+       .domain(d3.extent(data.map(function(d,i) { return parseFloat(d.Rate); })))
+       .interpolate(d3.interpolateRgb)
+       .range(["orangered", "silver"]);
 
       var max = d3.max(data, function(d) { return d.Rate; } );
       var min = 0;
@@ -47,13 +58,72 @@
       .enter()
         .append("g")
         .attr("transform", function(d, i) { return "translate(0, " + yScale(d.State) +")"; });
-
+      
       var bars = groups
         .append("rect")
         .attr("width", function(d) { return xScale(d.Rate); })
-        .attr("height", bar_height);
+        .attr("height", bar_height)
+        .style("fill", function(d) {
+          return color(parseFloat(d.Rate))});
 
-    });
+
+      var rates = groups.append("text")
+        .attr("x", function(d) { return xScale(d.Rate)-17; })
+        .attr("y", function(d) { return bar_height/2+3; })
+        .text(function(d) { return d.Rate; })
+
+      var states = groups.append("text")
+        .attr("x", function(d) { return -140; })
+        .attr("y", function(d) { return bar_height/2+3; })
+        .text(function(d) { return d.State; });
+      
+      
+      var ascending = true;
+     
+
+      var reorder= function(object) {
+         var checked = object.attr("value");
+        data.sort(function(a, b) {
+        if (checked == "state") {
+            if (ascending != true) {
+              return d3.ascending(a.State, b.State); 
+            }
+            else {
+              return d3.descending(a.State, b.State);
+            }
+        }    
+        else {
+            if (ascending != true) {
+              return d3.ascending(parseFloat(a.Rate), parseFloat(b.Rate));
+            }
+            else {
+              return d3.descending(parseFloat(a.Rate), parseFloat(b.Rate));
+             }
+          } });
+
+        ascending=!ascending
+        yScale.domain(data.map(function(d) {return d.State}));
+
+        groups
+        .transition()
+        .duration(750)
+        .delay(function(d, i) { return i * 10; })
+        .attr("transform", function(d) { return "translate(0," +yScale(d.State)+")"; }) 
+      };
+ //color stuff below  
+  var color = d3.scale.linear()
+     .domain(d3.extent(data.map(function(d,i) { return parseFloat(d); })))
+     .interpolate(d3.interpolateRgb)
+     .range(["orangered", "silver"]);
+
+    bars.attr("fill",function(d,i) {
+        return color(parseFloat(d));
+      }
+    );
+
+    
+    d3.selectAll("input").on("click", function () {reorder(d3.select(this))});
+});
   </script>
 </body>
 </html>
